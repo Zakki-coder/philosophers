@@ -4,10 +4,14 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <mutex>
+#include <thread>
+#include <unistd.h>
 
 class Philosopher {
   public:
-    Philosopher(int, int, int, int);
+    Philosopher(int, int, int, int, int, int);
+    std::array<std::mutex *, 2> forks;
     void decrement_time_to_die();
     void decrement_time_to_eat();
     void decrement_time_to_sleep();
@@ -16,11 +20,17 @@ class Philosopher {
     int time_to_eat();
     int time_to_sleep();
     int must_still_eat();
+    int fork_count();
+    int set_fork_count(int);
+    int set_index(int);
+    int get_index();
 
   private:
+    int _index_in_vector;
     int _time_to_die;
     int _time_to_eat;
     int _time_to_sleep;
     int _must_still_eat; //Optional arg
+    int _fork_count;
 };
 #endif

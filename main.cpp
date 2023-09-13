@@ -15,6 +15,7 @@ std::vector<int> parse_arguments(int argc, char **argv)
 {
   if (argc != ARG_NUMBER && argc != (ARG_NUMBER + OPTIONAL_ARGS_NUMBER))
     throw std::invalid_argument("Usage: ./philosophers <n_of_philosophers> <time_to_die> <time_to_eat> <time_to_sleep>, optional: <n_of_times_each_must_eat>");
+
   //Test that every argument is a number
   for (int i_arg = 1; i_arg < argc; i_arg++)
   {
@@ -40,20 +41,18 @@ std::vector<Philosopher> initialize_philosophers(std::vector<int> arguments)
   int time_to_eat = arguments[3];
   int time_to_sleep = arguments[4];
   int must_eat_number = arguments[5];
+  int fork_count = 0;
   std::vector<Philosopher> philosophers;
+  philosophers.reserve(n_of_philosophers);
 
-  printer(arguments);
-  if (philosophers.capacity() < n_of_philosophers)
-    philosophers.reserve(n_of_philosophers);
-
+  //printer(arguments);
   if (!must_eat_number)
     must_eat_number = -1;
 
   for(int i = 0; i < n_of_philosophers; i++)
   {
-    philosophers.push_back(Philosopher(time_to_die, time_to_eat, time_to_sleep, must_eat_number));
+    philosophers.push_back(Philosopher(time_to_die, time_to_eat, time_to_sleep, must_eat_number, fork_count, i));
   }
-
   return philosophers;
 }
 
@@ -62,7 +61,9 @@ void print_philosopher(Philosopher philosopher)
   std::cout << "Time to die: " << philosopher.time_to_die() << std::endl \
           << "Time_to_eat: " << philosopher.time_to_eat() << std::endl \
           << "Time_to_sleep: " << philosopher.time_to_sleep() << std::endl \
-          << "Must_still_eat: " << philosopher.must_still_eat() << std::endl;
+          << "Must_still_eat: " << philosopher.must_still_eat() << std::endl \
+          << "Index: " << philosopher.get_index() << std::endl \
+          << "Fork count: " << philosopher.fork_count() << std::endl << std::endl;
 }
 
 void print_philosophers(std::vector<Philosopher> philosophers)
@@ -75,6 +76,73 @@ void print_philosophers(std::vector<Philosopher> philosophers)
   std::cout << std::endl;
 }
 
+void start_eating(Philosopher philosopher)
+{
+  //TODO Protect
+  usleep(philosopher.time_to_eat());
+  philosopher.forks[0]->unlock();
+  philosopher.forks[1]->unlock();
+  philosopher.set_fork_count(0);
+  std::cout << philosopher.get_index() << " Finished EATING" << std::endl;
+}
+
+void get_forks(Philosopher philosopher)
+{
+  //TODO Protect
+  philosopher.forks[0]->lock();
+  philosopher.forks[1]->lock();
+  philosopher.set_fork_count(2);
+  print_philosopher(philosopher);
+  start_eating(philosopher);
+}
+
+void create_setup(std::vector<Philosopher> philosophers, int n_of_philosophers)
+{
+  //Rename to forks
+  std::vector<std::mutex> mutexes(n_of_philosophers); //Mutexes not movable, this works but dynamic resizing would not. 
+  //Create thread for every philosopher,
+  //Try to access mutex[phil_idx], after return try mutex[phil_idx + 1]
+  //Once you have two forks start eating
+  //we are creating threads inside a loop, so should we have a function that takes a philosopher and one fork?
+  //Should I store reference of mutex inside philosopher?
+  for(int i = 0; i < mutexes.size(); i++)
+  {
+    philosophers[i].forks[0] = &mutexes[i];
+    if (i < mutexes.size() - 1)
+      philosophers[i].forks[1] = &mutexes[i + 1];
+    else
+      philosophers[i].forks[1] = &mutexes[0];
+    //mutexes[i].lock();
+    //std::cout << "Mutex nb. " << i << " locked.";
+    //philosophers[i].forks[0]->unlock();
+    //std::cout << "Mutex nb. " << i << " unlocked.";
+  }
+  int i = 0;
+  while (1)
+  {
+    for(i; i < philosophers.size(); i++)
+    {
+      if (i % 2 == 0)
+      {
+        std::cout << "FIRST" << std::endl;
+        std::thread t(get_forks, philosophers[i]);
+        t.join();
+      }
+    }
+    i = 0;
+    for(i; i < philosophers.size(); i++)
+    {
+      if (i % 2 != 0)
+      {
+        std::cout << "SECOND" << std::endl;
+        std::thread t(get_forks, philosophers[i]);
+        t.join();
+      }
+    }
+    i = 0;
+  }
+}
+
 int main(int argc, char **argv)
 {
   std::vector<Philosopher> arguments;
@@ -85,6 +153,7 @@ int main(int argc, char **argv)
     std::cerr << error.what() << std::endl;
     return -1;
   }
-  print_philosophers(arguments);
+  //print_philosophers(arguments);
+  create_setup(arguments, atoi(argv[1]));
   return 0;
 }
