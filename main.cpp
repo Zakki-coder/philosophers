@@ -76,23 +76,37 @@ void print_philosophers(std::vector<Philosopher> philosophers)
   std::cout << std::endl;
 }
 
+void get_forks(Philosopher);
+
 void start_eating(Philosopher philosopher)
 {
   //TODO Protect
+  std::stringstream msg;
+  msg << philosopher.get_index() << " Started EATING" << std::endl;
+  std::cout << msg.str();
+  std::cout.flush();
   usleep(philosopher.time_to_eat());
+  msg << philosopher.get_index() << "SLEEEPING" << std::endl;
+  std::cout << msg.str();
+  std::cout.flush();
   philosopher.forks[0]->unlock();
   philosopher.forks[1]->unlock();
   philosopher.set_fork_count(0);
-  std::cout << philosopher.get_index() << " Finished EATING" << std::endl;
+  usleep(philosopher.time_to_sleep());
+  get_forks(philosopher);
 }
 
 void get_forks(Philosopher philosopher)
 {
   //TODO Protect
+  std::stringstream msg;
+  msg << philosopher.get_index() << " Get Forks!" << std::endl;
+  std::cout << msg.str();
+  std::cout.flush();
   philosopher.forks[0]->lock();
   philosopher.forks[1]->lock();
   philosopher.set_fork_count(2);
-  print_philosopher(philosopher);
+//  print_philosopher(philosopher);
   start_eating(philosopher);
 }
 
@@ -117,30 +131,25 @@ void create_setup(std::vector<Philosopher> philosophers, int n_of_philosophers)
     //philosophers[i].forks[0]->unlock();
     //std::cout << "Mutex nb. " << i << " unlocked.";
   }
-  int i = 0;
-  while (1)
-  {
-    for(i; i < philosophers.size(); i++)
-    {
-      if (i % 2 == 0)
-      {
-        std::cout << "FIRST" << std::endl;
-        std::thread t(get_forks, philosophers[i]);
-        t.join();
-      }
-    }
+  int i;
+  std::vector<std::thread> threads(n_of_philosophers);
     i = 0;
     for(i; i < philosophers.size(); i++)
     {
-      if (i % 2 != 0)
-      {
-        std::cout << "SECOND" << std::endl;
-        std::thread t(get_forks, philosophers[i]);
-        t.join();
-      }
+//      if (i % 2 == 0)
+//      {
+        std::thread(get_forks, philosophers[i]).detach();
+//      }
     }
-    i = 0;
-  }
+//    i = 1;
+//    for(i; i < philosophers.size(); i += 2)
+//    {
+//      if (i % 2 != 0)
+//      {
+//        std::thread(get_forks, philosophers[i]).detach();
+//      }
+//    }
+    while (1);
 }
 
 int main(int argc, char **argv)

@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <sstream>
 #include <unistd.h>
 
 class Philosopher {
